@@ -21,13 +21,18 @@ function Get($url, $ua){
     return $result;  
 } 
 
-// Fungsi untuk mengirim notifikasi ke Telegram 
+// Fungsi untuk mengirim notifikasi ke Telegram dengan tombol "✨ Place your Ad here"
 function sendTelegramMessage($chat_id, $message, $bot_token) { 
     $url = "https://api.telegram.org/bot$bot_token/sendMessage"; 
     $data = [ 
         'chat_id' => $chat_id, 
         'text' => $message, 
-        'parse_mode' => 'HTML' // Untuk mendukung hyperlink di pesan 
+        'parse_mode' => 'HTML', // Untuk mendukung hyperlink di pesan
+        'reply_markup' => json_encode([
+            'inline_keyboard' => [
+                [['text' => '👥 Join Our Group', 'url' => 'https://t.me/FRAGMENTTRENDING']]
+            ]
+        ])
     ]; 
      
     $options = [ 
@@ -44,7 +49,42 @@ function sendTelegramMessage($chat_id, $message, $bot_token) {
     if ($result === FALSE) { 
         echo "Error sending message to Telegram."; 
     } 
-} 
+}
+
+// Fungsi tambahan untuk mengirim pesan ke room tertentu (thread) di supergroup dengan tombol
+function sendToSupergroupRoom($message, $bot_token, $room_chat_id, $message_thread_id = null) {
+    $url = "https://api.telegram.org/bot$bot_token/sendMessage";
+    $data = [
+        'chat_id' => $room_chat_id,
+        'text' => $message,
+        'parse_mode' => 'HTML', // Untuk mendukung hyperlink di pesan
+        'reply_markup' => json_encode([
+            'inline_keyboard' => [
+                [['text' => '✨ Trade on Fragment', 'url' => 'https://fragment.com/']]
+            ]
+        ])
+    ];
+
+    // Jika ada message_thread_id, tambahkan ke data
+    if ($message_thread_id !== null) {
+        $data['message_thread_id'] = $message_thread_id;
+    }
+
+    $options = [
+        'http' => [
+            'header'  => "Content-type: application/x-www-form-urlencoded\r\n",
+            'method'  => 'POST',
+            'content' => http_build_query($data),
+        ],
+    ];
+
+    $context  = stream_context_create($options);
+    $result = file_get_contents($url, false, $context);
+
+    if ($result === FALSE) {
+        echo "Error sending message to Telegram supergroup room.";
+    }
+}
 
 // URL dan user-agent array 
 $url_sold = "https://fragment.com/?sort=ending&filter=sold"; 
@@ -62,6 +102,14 @@ $bot_token = "7238716933:AAES9uzR5tgw3tvF9mBVClh4uhtOVA1m_uA"; // Ganti dengan b
 $chat_id = "1787445189"; // Ganti dengan chat_id kamu 
 $channel_chat_id = "-1002276312812"; // Ganti dengan chat_id channel milikmu
 
+// Chat ID supergroup
+$supergroup_chat_id = "-1002253127688"; // Chat ID supergroup
+
+// Thread ID untuk setiap room
+$thread_listed_id = 2; // Thread ID room Listed
+$thread_auction_id = 7; // Thread ID room Auction
+$thread_sold_id = 9;    // Thread ID room Sold
+
 // Loop tak terbatas untuk memantau setiap 10 detik 
 while (true) { 
     $updates = false; 
@@ -73,9 +121,10 @@ while (true) {
     $prc_sold = explode('</div>', explode('<div class="table-cell-value tm-value icon-before icon-ton">', $i_sold)[1])[0]; 
 
     if ($uname_sold != $last_sold_uname) { 
-        $message = "📢 a username has been Sold 🎉\n\n"."🔗 <a href='https://fragment.com/username/".$uname_sold."'>"."@".$uname_sold."</a>\n\n"."💸Sold: ".$prc_sold." TON 💎\n\n"."⚡Just Now, ".date('H:i:s')." (UTC)\n••••••••••••••••••••••••••••••••••••••••••••\n 📩 Ads placements?\n DM: @yzzztv / @NPC_0xGamers\n\n"; 
+        $message = "📢 a username has been Sold 🎉\n\n"."🔗 <a href='https://fragment.com/username/".$uname_sold."'>"."@".$uname_sold."</a>\n\n"."💸Sold: ".$prc_sold." TON 💎\n\n"."⚡Just Now, ".date('H:i:s')." (UTC)\n\n";
         sendTelegramMessage($chat_id, $message, $bot_token); 
         sendTelegramMessage($channel_chat_id, $message, $bot_token); // Kirim ke channel
+        sendToSupergroupRoom($message, $bot_token, $supergroup_chat_id, $thread_sold_id); // Kirim ke thread Sold
         $last_sold_uname = $uname_sold; 
         $updates = true; 
     } 
@@ -87,9 +136,10 @@ while (true) {
     $prc_listed = explode('</div>', explode('<div class="table-cell-value tm-value icon-before icon-ton">', $i_listed)[1])[0]; 
 
     if ($uname_listed != $last_listed_uname) { 
-        $message = "📢 a username has been Listed ✍🏻\n\n"."🔗 <a href='https://fragment.com/username/".$uname_listed."'>"."@".$uname_listed."</a>\n\n"."🧾Price: ".$prc_listed." TON 💎\n\n"."⚡Just Now, ".date('H:i:s')." (UTC)\n••••••••••••••••••••••••••••••••••••••••••••\n 📩 Ads placements?\n DM: @yzzztv / @NPC_0xGamers\n\n";  
+        $message = "📢 a username has been Listed ✍🏻\n\n"."🔗 <a href='https://fragment.com/username/".$uname_listed."'>"."@".$uname_listed."</a>\n\n"."🧾Price: ".$prc_listed." TON 💎\n\n"."⚡Just Now, ".date('H:i:s')." (UTC)\n\n";
         sendTelegramMessage($chat_id, $message, $bot_token); 
         sendTelegramMessage($channel_chat_id, $message, $bot_token); // Kirim ke channel
+        sendToSupergroupRoom($message, $bot_token, $supergroup_chat_id, $thread_listed_id); // Kirim ke thread Listed
         $last_listed_uname = $uname_listed; 
         $updates = true; 
     } 
@@ -101,9 +151,10 @@ while (true) {
     $prc_auction = explode('</div>', explode('<div class="table-cell-value tm-value icon-before icon-ton">', $i_auction)[1])[0]; 
 
     if ($uname_auction != $last_auction_uname) { 
-        $message = "📢 a username listed on Auction ⚖️\n\n"."🔗 <a href='https://fragment.com/username/".$uname_auction."'>"."@".$uname_auction."</a>\n\n"."🧾Price: ".$prc_auction." TON 💎 \n\n⚠️End: ".$tm_auction." (UTC)\n••••••••••••••••••••••••••••••••••••••••••••\n 📩 Ads placements?\n DM: @yzzztv / @NPC_0xGamers\n\n"; 
+        $message = "📢 a username listed on Auction ⚖️\n\n"."🔗 <a href='https://fragment.com/username/".$uname_auction."'>"."@".$uname_auction."</a>\n\n"."🧾Price: ".$prc_auction." TON 💎 \n\n⚠️End: ".$tm_auction." (UTC)\n\n"; 
         sendTelegramMessage($chat_id, $message, $bot_token); 
         sendTelegramMessage($channel_chat_id, $message, $bot_token); // Kirim ke channel
+        sendToSupergroupRoom($message, $bot_token, $supergroup_chat_id, $thread_auction_id); // Kirim ke thread Auction
         $last_auction_uname = $uname_auction; 
         $updates = true; 
     } 
@@ -115,5 +166,5 @@ while (true) {
 
     // Tunggu 10 detik sebelum mengambil data lagi 
     sleep(10); 
-} 
+}
 ?>
